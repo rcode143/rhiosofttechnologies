@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CardView Slideshow</title>
+
+  <!-- Bootstrap & Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-color: #e8f5e9;
+      --text-color: #000;
+      --topbar-color: #43a047;
+      --sidebar-bg: #2e7d32;
+      --sidebar-hover: #388e3c;
+      --card-bg: #fff;
+      --card-shadow: rgba(0, 0, 0, 0.25);
+      --inner-bg: #f5f5f5;
+    }
+
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --topbar-color: #1b5e20;
+      --sidebar-bg: #1b5e20;
+      --sidebar-hover: #2e7d32;
+      --card-bg: #1e1e1e;
+      --card-shadow: rgba(0, 0, 0, 0.6);
+      --inner-bg: #2b2b2b;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      transition: background-color 0.4s, color 0.4s;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      height: 100%;
+      width: 250px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background-color: var(--sidebar-bg);
+      overflow-x: hidden;
+      transition: 0.3s;
+      padding-top: 60px;
+      z-index: 1050;
+    }
+
+    .sidebar a {
+      padding: 12px 20px;
+      text-decoration: none;
+      font-size: 18px;
+      color: white;
+      display: block;
+    }
+
+    .sidebar a:hover {
+      background-color: var(--sidebar-hover);
+    }
+
+    .sidebar .closebtn {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      font-size: 28px;
+    }
+
+    /* Topbar */
+    .topbar {
+      background-color: var(--topbar-color);
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background-color 0.4s;
+    }
+
+    .menu-btn {
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    /* Toggle Button */
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+
+    .toggle-btn:hover {
+      transform: rotate(15deg);
+    }
+
+    .main {
+      margin-left: 250px;
+      padding: 20px;
+      transition: margin-left 0.3s;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 0;
+      }
+
+      .main {
+        margin-left: 0;
+      }
+    }
+
+    /* Slideshow Container */
+    .slideshow-container {
+      max-width: 600px;
+      margin: 40px auto;
+      position: relative;
+    }
+
+    .slide {
+      display: none;
+    }
+
+    /* ✅ Polaroid Frame with Inset Photo */
+    .card-view {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 10px 20px var(--card-shadow);
+      overflow: hidden;
+      padding: 15px;
+      max-width: 100%;
+      aspect-ratio: 3/4;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.4s;
+    }
+
+    .card-view:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 14px 28px var(--card-shadow);
+    }
+
+    /* ✅ Inner container na parang butas ang picture */
+ /* ✅ Uniform Portrait Frame (same height for all slides) */
+.polaroid-frame {
+  position: relative;
+  width: 100%;
+  max-width: 400px; /* optional: controls frame width */
+  aspect-ratio: 3/4; /* portrait ratio */
+  background: #f5f5f5;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.25);
+  padding: 12px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+/* ✅ Image perfectly fits portrait frame, looks recessed */
+.polaroid-frame img {
+  width: 100%;
+  height: 90%;
+  object-fit: cover; /* keeps uniform size while cropping excess */
+  border-radius: 8px;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3);
+  transform: translateY(2px);
+}
+
+
+    /* Caption below image */
+    .card-body {
+      padding-top: 10px;
+      text-align: center;
+    }
+
+    .card-body p {
+      font-style: italic;
+      color: var(--text-color);
+      font-size: 14px;
+      margin: 6px 0 0;
+    }
+
+    /* Navigation Buttons */
+    .prev,
+    .next {
+      cursor: pointer;
+      position: absolute;
+      top: 50%;
+      padding: 10px;
+      color: white;
+      font-size: 18px;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+    }
+
+    .prev {
+      left: -40px;
+    }
+
+    .next {
+      right: -40px;
+    }
+
+    /* Dots */
+    .dots {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .dot {
+      cursor: pointer;
+      height: 12px;
+      width: 12px;
+      margin: 0 4px;
+      background-color: #bbb;
+      border-radius: 50%;
+      display: inline-block;
+      transition: background-color 0.3s;
+    }
+
+    .dot.active {
+      background-color: #43a047;
+    }
+
+
+ /* ✅ Responsive Portrait Profile */
+.sidebar-profile {
+  text-align: center;
+  padding: 15px 10px 25px;
+}
+
+.profile-frame {
+  width: 80%;
+  max-width: 180px;       /* prevents it from being too large on wide screens */
+  aspect-ratio: 3/4;      /* maintains portrait shape */
+  margin: 0 auto;
+  background: #f5f5f5;
+  border-radius: 10px;
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.3),
+    inset 0 3px 6px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+/* The portrait image */
+.profile-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translateY(2px);
+  border-radius: 8px;
+}
+
+/* Responsive adjustment for smaller screens */
+@media (max-width: 768px) {
+  .profile-frame {
+    width: 60%;
+    max-width: 140px;
+  }
+
+  .sidebar-profile h6 {
+    font-size: 14px;
+  }
+}
+
+
+body.dark-mode .sidebar-profile .circular-card {
+  background: #222;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
+}
+
+/* ✅ Sidebar Footer */
+.sidebar-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #1b5e20; /* darker green tone for contrast */
+  text-align: center;
+  padding: 10px 0;
+  color: #c8e6c9;
+  font-size: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-footer p {
+  margin: 0;
+}
+
+/* Adjust when sidebar is collapsed */
+@media (max-width: 768px) {
+  .sidebar-footer {
+    font-size: 12px;
+    padding: 8px 0;
+  }
+}
+/* ✅ Quote text auto-adapts to theme */
+.card-body p {
+  font-style: italic;
+  font-size: 14px;
+  margin: 6px 0 0;
+  transition: color 0.3s ease;
+  color: #333; /* default for light mode */
+}
+
+/* 🌙 Dark mode text color */
+body.dark-mode .card-body p {
+  color: #e0e0e0;
+}
+
+/* 🎵 Sidebar Audio Player */
+.sidebar-audio {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.audio-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.audio-btn {
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #66bb6a, #43a047);
+  color: white;
+  font-size: 22px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  transition: all 0.25s ease;
+}
+
+.audio-btn:hover {
+  transform: scale(1.1);
+  background: linear-gradient(135deg, #81c784, #4caf50);
+}
+
+.audio-btn:active {
+  transform: scale(0.95);
+}
+
+.audio-label {
+  display: block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #c8e6c9;
+}
+
+/* 🌙 Dark Mode Compatibility */
+body.dark-mode .audio-btn {
+  background: linear-gradient(135deg, #2e7d32, #1b5e20);
+  color: #f0f0f0;
+}
+
+body.dark-mode .audio-btn:hover {
+  background: linear-gradient(135deg, #388e3c, #2e7d32);
+}
+
+body.dark-mode .audio-label {
+  color: #a5d6a7;
+}
+
+
+
+  </style>
+</head>
+
+<body>
+
+  <!-- Sidebar -->
+  <div id="mySidebar" class="sidebar">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()"><i class="fas fa-times"></i></a>
+   
+ <!-- ✅ Responsive Portrait Profile in Sidebar -->
+<div class="sidebar-profile">
+  <div class="profile-frame">
+    <img src="img/hpptday.jpg" alt="Profile Image">
+  </div>
+<!-- 🎵 Sidebar Music Player -->
+<div class="sidebar-audio text-center">
+  <audio id="bgMusic" loop>
+    <source src="teachersday.mp3" type="audio/mp3">
+    Your browser does not support the audio element.
+  </audio>
+
+  <div class="audio-controls">
+    <button id="playBtn" class="audio-btn" onclick="togglePlay()">
+      <i class="fas fa-play"></i>
+    </button>
+    <button id="muteBtn" class="audio-btn" onclick="toggleMute()">
+      <i class="fas fa-volume-up"></i>
+    </button>
+  </div>
+  
+</div>
+
+  <!-- Sidebar Footer -->
+<div class="sidebar-footer">
+  <p>Happy Teacher's Day <br> David Rcode &copy; 2025 </p>
+</div>
+
+</div>
+
+
+
+
+</div>
+
+
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <span class="menu-btn" onclick="openNav()"><i class="fas fa-bars"></i></span>
+   
+    <button class="toggle-btn" id="themeToggle" title="Toggle Dark/Light Mode">
+      <i class="fas fa-moon"></i>
+    </button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="slideshow-container">
+
+        
+
+      <div class="slide">
+        <div class="card-view">
+          <div class="polaroid-frame">
+            <img src="img/amy1.jpg" >
+            <div class="card-body">
+              <p>A good teacher is like a candle — it consumes itself to light the way for others.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide">
+        <div class="card-view">
+          <div class="polaroid-frame">
+            <img src="img/amymain.jpg" >
+            <div class="card-body">
+              <p>The influence of a great teacher can never be erased.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide">
+        <div class="card-view">
+          <div class="polaroid-frame">
+            <img src="img/amy2.jpg" >
+            <div class="card-body">
+              <p>A teacher takes a hand, opens a mind, and touches a heart.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+
+       
+
+    </div>
+  </div>
+
+  <!-- Dots -->
+  <div class="dots mt-3">
+    <span class="dot" onclick="currentSlide(1)"></span>
+    <span class="dot" onclick="currentSlide(2)"></span>
+    <span class="dot" onclick="currentSlide(3)"></span>
+  </div>
+
+  <!-- JS -->
+  <script>
+    // Sidebar Functions
+    function openNav() {
+      document.getElementById("mySidebar").style.width = "250px";
+      if (window.innerWidth >= 768) {
+        document.querySelector(".main").style.marginLeft = "250px";
+      }
+    }
+
+    function closeNav() {
+      document.getElementById("mySidebar").style.width = "0";
+      document.querySelector(".main").style.marginLeft = "0";
+    }
+
+    // Slideshow Logic
+    let slideIndex = 1;
+    showSlides(slideIndex);
+
+    function plusSlides(n) {
+      showSlides(slideIndex += n);
+    }
+
+    function currentSlide(n) {
+      showSlides(slideIndex = n);
+    }
+
+    function showSlides(n) {
+      let slides = document.getElementsByClassName("slide");
+      let dots = document.getElementsByClassName("dot");
+      if (n > slides.length) slideIndex = 1;
+      if (n < 1) slideIndex = slides.length;
+      for (let i = 0; i < slides.length; i++) {
+        slides[i].style.display = "none";
+      }
+      for (let i = 0; i < dots.length; i++) {
+        dots[i].classList.remove("active");
+      }
+      slides[slideIndex - 1].style.display = "block";
+      dots[slideIndex - 1].classList.add("active");
+    }
+
+    // Auto Slide
+    setInterval(() => {
+      plusSlides(1);
+    }, 5000);
+
+    // 🌗 Theme Toggle
+    const toggleBtn = document.getElementById('themeToggle');
+    toggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      const icon = toggleBtn.querySelector('i');
+      if (document.body.classList.contains('dark-mode')) {
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+      } else {
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+      }
+    });
+
+
+  const music = document.getElementById("bgMusic");
+  const playBtn = document.getElementById("playBtn").querySelector("i");
+  const muteBtn = document.getElementById("muteBtn").querySelector("i");
+
+  function togglePlay() {
+    if (music.paused) {
+      music.play();
+      playBtn.classList.replace("fa-play", "fa-pause");
+    } else {
+      music.pause();
+      playBtn.classList.replace("fa-pause", "fa-play");
+    }
+  }
+
+  function toggleMute() {
+    music.muted = !music.muted;
+    if (music.muted) {
+      muteBtn.classList.replace("fa-volume-up", "fa-volume-mute");
+    } else {
+      muteBtn.classList.replace("fa-volume-mute", "fa-volume-up");
+    }
+  }
+
+
+  </script>
+
+</body>
+
+</html>
