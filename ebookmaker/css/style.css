@@ -1,0 +1,55 @@
+:root{
+  --bg:#071022; --card:#0b1224; --muted:#9aa7bd; --accent:#60a5fa; --glass:rgba(255,255,255,0.03);
+  --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#031022,#061028);color:#e9f3ff}
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg, rgba(255,255,255,0.02), transparent);position:fixed;top:0;left:0;right:0;z-index:50}
+.icon-btn{background:transparent;border:0;color:inherit;font-size:20px;padding:8px;border-radius:8px;cursor:pointer}
+.title-group{display:flex;flex-direction:column;flex:1;gap:6px}
+.title-input{font-size:16px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+.author-input{font-size:12px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--muted)}
+.top-actions{display:flex;gap:8px}
+
+/* Buttons */
+.btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;cursor:pointer}
+.btn.full{width:100%}
+.btn.primary{background:linear-gradient(180deg,var(--accent),#3b82f6);color:#04203a;border:none}
+
+/* Sidebar (mobile slide-out) */
+.sidebar{position:fixed;left:0;top:56px;bottom:0;width:320px;background:var(--card);box-shadow:16px 0 36px rgba(0,0,0,0.6);transform:translateX(-110%);transition:transform .28s cubic-bezier(.2,.9,.2,1);padding:12px;display:flex;flex-direction:column;z-index:60;border-top-right-radius:12px;border-bottom-right-radius:12px}
+.sidebar.open{transform:translateX(0)}
+.sidebar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sidebar-body{display:flex;flex-direction:column;flex:1}
+.chapters-list{overflow:auto;flex:1;padding-right:6px}
+.chapter-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);margin-bottom:8px}
+.chapter-item .meta{max-width:60%}
+.sidebar-controls{padding-top:8px}
+
+/* Main layout */
+.main{display:grid;grid-template-columns:1fr;gap:12px;padding:12px;padding-top:76px}
+.editor-card{background:var(--card);padding:12px;border-radius:12px}
+.editor-head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+.file-label{font-size:13px;color:var(--muted);cursor:pointer}
+.file-label input{display:none}
+.editor{width:100%;min-height:220px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit;resize:vertical}
+.editor-actions{margin-top:8px}
+.preview-card{background:var(--card);padding:12px;border-radius:12px}
+.preview-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.preview-area{background:white;padding:20px;border-radius:10px;min-height:300px;color:#04203a;overflow:auto}
+
+/* Desktop layout */
+@media(min-width:900px){
+  .sidebar{position:relative;transform:none;top:0;box-shadow:none;width:320px;border-radius:0}
+  .app{flex-direction:row}
+  .topbar{position:fixed;left:320px;right:0;top:0}
+  .main{grid-template-columns:1fr 420px;padding-top:76px;margin-left:320px}
+}
+
+/* small touches */
+.muted{color:var(--muted);font-size:12px}
+button, input, textarea{touch-action:manipulation}

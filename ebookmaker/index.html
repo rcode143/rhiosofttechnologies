@@ -1,0 +1,78 @@
+
+</html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>eBook Maker By Rhio</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- html2pdf (bundle includes html2canvas + jsPDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <button id="openSidebar" class="icon-btn" aria-label="Open chapters">☰</button>
+
+      <div class="title-group">
+        <input id="bookTitle" class="title-input" placeholder="Book title" value="My eBook" />
+        <input id="bookAuthor" class="author-input" placeholder="Author" value="Anonymous" />
+      </div>
+
+      <div class="top-actions">
+        <button id="exportPdfBtn" class="btn primary">Export PDF</button>
+      </div>
+    </header>
+
+    <aside id="sidebar" class="sidebar" aria-hidden="true">
+      <div class="sidebar-head">
+        <strong>Chapters</strong>
+        <div>
+          <button id="closeSidebar" class="icon-btn">✕</button>
+        </div>
+      </div>
+
+      <div class="sidebar-body">
+        <div id="chaptersList" class="chapters-list" role="list"></div>
+
+        <div class="sidebar-controls">
+          <button id="addChapterBtn" class="btn full">+ Add Chapter</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="editor-card">
+        <div class="editor-head">
+          <input id="chapterTitle" class="input" placeholder="Chapter title" />
+          <label class="file-label">Add Image
+            <input id="imageInput" type="file" accept="image/*" />
+          </label>
+        </div>
+
+        <textarea id="chapterContent" class="editor" placeholder="Write content here (basic HTML allowed)"><p>Start writing your chapter.</p></textarea>
+
+        <div class="editor-actions">
+          <button id="saveChapterBtn" class="btn full">Save / Update Chapter</button>
+        </div>
+      </section>
+
+      <section class="preview-card">
+        <div class="preview-head">
+          <strong>Preview</strong>
+          <small class="muted">What will be exported to PDF</small>
+        </div>
+
+        <div id="previewArea" class="preview-area" role="region" aria-label="Preview area">
+          <!-- preview populated by JS -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
