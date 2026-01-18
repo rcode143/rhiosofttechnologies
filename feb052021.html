@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOVE APP 💕</title>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+/* ========== GLOBAL ========== */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Segoe UI',sans-serif;
+  background:#ffe6f0; 
+  color:#880e4f;
+  transition:0.3s;
+}
+body.dark-mode{
+  background:#2b001f;
+  color:#ffb6c1;
+}
+
+/* ========== TOPBAR ========== */
+.topbar{
+  position:fixed; top:0; left:0; right:0;
+  height:56px;
+  background:#d81b60;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px;
+  color:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+  z-index:1000;
+}
+.menu-btn{font-size:22px;cursor:pointer;}
+.topbar-buttons{
+  display:flex; align-items:center; gap:8px;
+}
+.topbar-buttons button{
+  width:36px; height:36px; border:none; border-radius:10px;
+  background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:#fff; font-size:16px; transition:0.25s;
+}
+.topbar-buttons button:hover{background:rgba(255,255,255,.35);}
+.topbar-buttons button.hidden{display:none;}
+
+/* ========== SIDEBAR ========== */
+.sidebar{
+  position:fixed; top:56px; left:-260px;
+  width:260px; height:calc(100% - 56px);
+  background:#c2185b; color:#fff;
+  padding:16px; transition:.3s; z-index:999;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  overflow:hidden;
+}
+.sidebar.active{left:0;}
+
+/* Sidebar profile */
+.sidebar-profile{text-align:center; margin-bottom:20px;}
+.profile-frame{
+  width:80%; max-width:160px; aspect-ratio:3/4;
+  margin:auto; background:#f8bbd0; border-radius:12px; overflow:hidden;
+  transition:0.3s;
+}
+body.dark-mode .profile-frame{background:#880e4f;}
+.profile-frame img{width:100%; height:100%; object-fit:cover; border-radius:8px;}
+
+/* Sidebar buttons */
+.sidebar-buttons{display:flex; flex-direction:column; gap:12px; z-index:2;}
+.sidebar-buttons button{
+  padding:10px; border:none; border-radius:12px;
+  background:#f06292; color:#fff; font-weight:600; cursor:pointer;
+  display:flex; align-items:center; gap:6px;
+  transition:.25s;
+}
+.sidebar-buttons button:hover{background:#ec407a;}
+body.dark-mode .sidebar-buttons button{background:#ad1457; color:#fff;}
+body.dark-mode .sidebar-buttons button:hover{background:#d81b60;}
+.sidebar-buttons button.active{
+  box-shadow: 0 0 12px 3px #ff4081;
+  background: #e91e63; color:#fff;
+}
+body.dark-mode .sidebar-buttons button.active{
+  box-shadow: 0 0 12px 3px #ff80ab;
+  background:#ad1457; color:#fff;
+}
+
+/* Sidebar footer pinned */
+.sidebar-footer{
+  text-align:center; padding:12px 0; font-size:13px; color:#ffd1dc;
+  border-top:1px solid rgba(255,255,255,.2); background:transparent;
+  z-index:2;
+}
+
+/* Overlay */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.3); display:none; z-index:998;}
+.overlay.active{display:block;}
+
+/* Main content */
+.main{padding:80px 16px 40px; max-width:900px; margin:auto;}
+
+/* Slideshow - only inner card visible */
+.slide{display:none;}
+.card-view{
+  background:#fff0f6; border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.2); padding:16px; margin-bottom:16px;
+}
+.polaroid-frame{aspect-ratio:3/4; background:#f8bbd0; border-radius:12px; padding:10px; transition:0.3s;}
+body.dark-mode .polaroid-frame{background:#880e4f;}
+.polaroid-frame img{width:100%; height:100%; object-fit:cover; border-radius:8px;}
+.card-body p{text-align:center; font-style:italic; margin-top:10px; color:#d81b60;}
+body.dark-mode .card-body p{color:#ff80ab;}
+
+/* Slideshow circles */
+.dots{ text-align:center; margin-top:10px; }
+.dot{ cursor:pointer; height:12px; width:12px; margin:0 4px; background-color:#bbb; border-radius:50%; display:inline-block; transition:background-color .3s; }
+.dot.active{background-color:#ff4081;}
+
+/* Message section */
+#messageSection{display:none; margin-top:20px; position:relative; overflow:hidden;}
+.message-card{background:#fff0f6; padding:24px; border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.2); text-align:center; transition:0.3s; position:relative; z-index:2;}
+.message-card h2{margin-bottom:12px; color:#d81b60;}
+.message-card p{font-size:15px; line-height:1.6; margin-top:10px; color:#880e4f;}
+body.dark-mode .message-card{background:#880e4f;}
+body.dark-mode .message-card h2{color:#ff80ab;}
+body.dark-mode .message-card p{color:#ffb6c1;}
+#typedMessage::after{content:"|"; display:inline-block; margin-left:2px; animation: blink 0.7s infinite; color:#d81b60;}
+body.dark-mode #typedMessage::after{color:#ff80ab;}
+
+/* Flying hearts in message */
+.message-hearts{position:absolute; inset:0; pointer-events:none; z-index:1; overflow:hidden;}
+.message-hearts .heart{position:absolute; transform:rotate(45deg); animation:floatUp linear forwards; cursor:pointer; border-radius:50%;}
+.message-hearts .heart::before,.message-hearts .heart::after{content:""; position:absolute; border-radius:50%;}
+.message-hearts .heart::before{top:-50%; left:0;} 
+.message-hearts .heart::after{top:0; left:-50%;}
+.message-hearts .heart.glow{box-shadow:0 0 12px 4px #ff80ab; transform: scale(1.3) rotate(45deg); transition:0.3s;}
+@keyframes floatUp{0%{opacity:1; transform:translateY(0) rotate(45deg) scale(1);}100%{opacity:0; transform:translateY(-200px) rotate(45deg) scale(0.5);}}
+@keyframes blink{0%,50%,100%{opacity:1;}25%,75%{opacity:0;}}
+</style>
+</head>
+<body>
+
+<!-- Overlay -->
+<div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar">
+  <div class="content">
+    <div class="sidebar-profile">
+      <div class="profile-frame"><img src="https://wkssjnfslomrdsycprdu.supabase.co/storage/v1/object/sign/bgmusic/slide/file_000000003b306230b6acc33b77ae2fc7.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iMDA4YjE4ZC0xNWVjLTRlNWMtOWRjYy1hYTlhNjI4OGIyOTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJiZ211c2ljL3NsaWRlL2ZpbGVfMDAwMDAwMDAzYjMwNjIzMGI2YWNjMzNiNzdhZTJmYzcucG5nIiwiaWF0IjoxNzY4NzE1NTg0LCJleHAiOjE4MDAyNTE1ODR9.SEXQoyZWEtyC4pe1xqHClxge2YK4Cy5IZGBbpGYh2vw" alt="Profile"></div>
+    </div>
+    <div class="sidebar-buttons">
+      <button onclick="showSlideshow()"><i class="fas fa-images"></i> Slideshow</button>
+      <button onclick="handleMessageClick()"><i class="fas fa-envelope"></i> Message</button>
+    </div>
+  </div>
+  <div class="sidebar-footer">Happy Valentine's Day<br>Rhiosofttechnologies © 2026</div>
+</div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <span class="menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></span>
+  <div class="topbar-buttons">
+    <button id="topMuteBtn" class="hidden" onclick="toggleMuteTop()"><i class="fas fa-volume-up"></i></button>
+    <button id="themeToggle"><i class="fas fa-moon"></i></button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div id="slideshow">
+    <div class="slide">
+      <div class="card-view"><div class="polaroid-frame"><img src="https://wkssjnfslomrdsycprdu.supabase.co/storage/v1/object/sign/bgmusic/slide/val4.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iMDA4YjE4ZC0xNWVjLTRlNWMtOWRjYy1hYTlhNjI4OGIyOTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJiZ211c2ljL3NsaWRlL3ZhbDQuanBnIiwiaWF0IjoxNzY4NzA5Mjk3LCJleHAiOjE4MDAyNDUyOTd9.sI7QUehj6rKfO3prHJoeIznEtrAKBik6D6aAw3j8V34"><div class="card-body"><p>“Every day with you feels like Valentine’s Day—full of love, laughter, and endless warmth.”</p></div></div></div>
+    </div>
+    <div class="slide">
+      <div class="card-view"><div class="polaroid-frame"><img src="https://wkssjnfslomrdsycprdu.supabase.co/storage/v1/object/sign/bgmusic/slide/val2.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iMDA4YjE4ZC0xNWVjLTRlNWMtOWRjYy1hYTlhNjI4OGIyOTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJiZ211c2ljL3NsaWRlL3ZhbDIuanBlZyIsImlhdCI6MTc2ODcwOTM1MCwiZXhwIjoxODAwMjQ1MzUwfQ.KIPDo8cTl1DegyaXvH6Q-vLYSbgJpsKtkVn3b2J6yHc"><div class="card-body"><p>“You are my heart, my home, and my forever Valentine.”</p></div></div></div>
+    </div>
+    <div class="slide">
+      <div class="card-view"><div class="polaroid-frame"><img src="https://wkssjnfslomrdsycprdu.supabase.co/storage/v1/object/sign/bgmusic/slide/val3.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iMDA4YjE4ZC0xNWVjLTRlNWMtOWRjYy1hYTlhNjI4OGIyOTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJiZ211c2ljL3NsaWRlL3ZhbDMuanBlZyIsImlhdCI6MTc2ODcwOTA2MSwiZXhwIjoxODAwMjQ1MDYxfQ._NAcPByoRfRSuh8_Jc3XFBf6914vU5xopj98pPZZb6Q"><div class="card-body"><p>“Loving you is not just what I do—it’s who I am, today and always.”</p></div></div></div>
+    </div>
+    <div class="dots" >
+      <span class="dot" onclick="currentSlide(1)"></span>
+      <span class="dot" onclick="currentSlide(2)"></span>
+      <span class="dot" onclick="currentSlide(3)"></span>
+    </div>
+  </div>
+
+  <div id="messageSection" class="message-card">
+    <div class="message-hearts">
+       </div>
+    <h2>Message </h2>
+     
+    <p id="typedMessage"></p>
+    <p style="font-style:italic;">— Rhio ❤️</p>
+    </div>
+
+  
+
+<script>
+// Sidebar toggle
+const sidebar=document.getElementById("sidebar"), overlay=document.getElementById("overlay");
+function toggleSidebar(){sidebar.classList.toggle("active"); overlay.classList.toggle("active");}
+
+// Active button
+const sidebarButtons=document.querySelectorAll('.sidebar-buttons button');
+function setActiveButton(activeButton){sidebarButtons.forEach(btn=>btn.classList.remove('active')); activeButton.classList.add('active');}
+
+// Show/hide sections
+function showMessageWithTyping(){
+  document.getElementById("slideshow").style.display="none";
+  document.getElementById("messageSection").style.display="block";
+  toggleSidebar();
+  setActiveButton(document.querySelector('.sidebar-buttons button:nth-child(2)'));
+  const msg="Mahal, gusto ko lang sabihin na sobrang saya ko at kontento sa buhay ko dahil ikaw ang kasama ko. Salamat sa lahat ng tawa, lambing, at kahit simpleng sandali na magkasama tayo—lahat ‘yan ang nagpapasaya sa akin. Sa bawat araw na dumaraan, lalo kong nararamdaman kung gaano kita kamahal at kung gaano ako kaswerte na ikaw ang asawa ko. Lagi kitang mamahalin at aalagaan, ngayon at sa bawat araw ng buhay natin. 🩷 Nagmamahal";
+  typeMessage(msg,"typedMessage",40);
+
+  // Show top mute button and play audio
+  document.getElementById("topMuteBtn").classList.remove("hidden");
+  music.play();
+  startMessageHearts();
+}
+
+// Show slideshow
+function showSlideshow(){
+  document.getElementById("messageSection").style.display="none";
+  document.getElementById("slideshow").style.display="block";
+  toggleSidebar();
+  setActiveButton(document.querySelector('.sidebar-buttons button:nth-child(1)'));
+}
+
+// Password protection
+function handleMessageClick(){
+  const savedPassword=localStorage.getItem('teacherMessagePassword');
+  const sessionEntered=sessionStorage.getItem('teacherMessageSession');
+  if(sessionEntered){showMessageWithTyping();return;}
+  if(!savedPassword){
+    Swal.fire({title:'Set a Password',input:'password',inputPlaceholder:'Enter new password',showCancelButton:true,confirmButtonText:'Set',confirmButtonColor:'#d81b60'})
+    .then((result)=>{if(result.isConfirmed && result.value){localStorage.setItem('teacherMessagePassword',result.value);sessionStorage.setItem('teacherMessageSession','true');Swal.fire({icon:'success',title:'Password saved!',confirmButtonColor:'#d81b60'}).then(()=>showMessageWithTyping());}});
+  }else{
+    Swal.fire({title:'Enter Password',input:'password',inputPlaceholder:'Enter password',showCancelButton:true,confirmButtonText:'Submit',confirmButtonColor:'#d81b60'})
+    .then((result)=>{if(result.isConfirmed){if(result.value===savedPassword){sessionStorage.setItem('teacherMessageSession','true');showMessageWithTyping();}else{Swal.fire({icon:'error',title:'Incorrect password!',confirmButtonColor:'#d81b60'});}}});
+  }
+}
+
+// Typing animation
+function typeMessage(text,elementId,speed=50){
+  const element=document.getElementById(elementId); element.innerHTML="";
+  let i=0;
+  function typeChar(){if(i<text.length){element.innerHTML+=text.charAt(i);i++;setTimeout(typeChar,speed);}}
+  typeChar();
+}
+
+// Slideshow
+let slideIndex=1; showSlides(slideIndex);
+function showSlides(n){
+  let slides=document.getElementsByClassName("slide");
+  let dots=document.getElementsByClassName("dot");
+  if(n>slides.length)slideIndex=1; if(n<1)slideIndex=slides.length;
+  for(let i=0;i<slides.length;i++)slides[i].style.display="none";
+  for(let i=0;i<dots.length;i++)dots[i].classList.remove("active");
+  slides[slideIndex-1].style.display="block";
+  dots[slideIndex-1].classList.add("active");
+}
+setInterval(()=>{slideIndex++; showSlides(slideIndex);},5000);
+function currentSlide(n){showSlides(slideIndex=n);}
+function plusSlides(n){showSlides(slideIndex+=n);}
+
+// Audio (play after message)
+const music=document.createElement("audio");
+music.src="https://wkssjnfslomrdsycprdu.supabase.co/storage/v1/object/sign/bgmusic/Tahanan.mp3?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9iMDA4YjE4ZC0xNWVjLTRlNWMtOWRjYy1hYTlhNjI4OGIyOTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJiZ211c2ljL1RhaGFuYW4ubXAzIiwiaWF0IjoxNzY4NzE3MzkzLCJleHAiOjE4MDAyNTMzOTN9.dUHirkpUeMrqBXeoWWN3Gwx6uT9VkLYfJWbynKRm2O4"; 
+music.loop=true;
+music.volume=0.5;
+document.body.appendChild(music);
+function toggleMuteTop(){
+  music.muted=!music.muted;
+  document.querySelector("#topMuteBtn i").className=music.muted?"fas fa-volume-mute":"fas fa-volume-up";
+}
+
+// Theme toggle
+document.getElementById("themeToggle").onclick=()=>{document.body.classList.toggle("dark-mode");}
+
+// Default active button
+setActiveButton(document.querySelector('.sidebar-buttons button:nth-child(1)'));
+
+// Floating hearts on main sidebar (optional)
+function createHeart(){
+  const heart=document.createElement("div"); heart.classList.add("heart");
+  const container=document.querySelector(".hearts-container");
+  heart.style.left=Math.random()*(container.offsetWidth-20)+"px";
+  const size=10+Math.random()*14; heart.style.width=size+"px"; heart.style.height=size+"px";
+  const colors=["#ff4081","#ff80ab","#f48fb1"]; heart.style.background=colors[Math.floor(Math.random()*3)];
+  const duration=3+Math.random()*2; heart.style.animationDuration=duration+"s";
+  container.appendChild(heart);
+  setTimeout(()=>heart.remove(),duration*1000);
+}
+setInterval(createHeart,300);
+
+// Message section hearts
+function createMessageHeart(){
+  const heart=document.createElement("div"); heart.classList.add("heart");
+  const container=document.querySelector(".message-hearts");
+  heart.style.left=Math.random()*(container.offsetWidth-20)+"px";
+  const size=12+Math.random()*12; heart.style.width=size+"px"; heart.style.height=size+"px";
+  const colors=["#ff4081","#ff80ab","#f48fb1"]; heart.style.background=colors[Math.floor(Math.random()*3)];
+  const duration=3+Math.random()*2; heart.style.animationDuration=duration+"s";
+  heart.onclick=()=>{heart.classList.toggle("glow");};
+  container.appendChild(heart);
+  setTimeout(()=>heart.remove(),duration*1000);
+}
+
+let messageHeartInterval;
+function startMessageHearts(){
+  messageHeartInterval=setInterval(createMessageHeart,400);
+}
+function stopMessageHearts(){
+  clearInterval(messageHeartInterval);
+}
+</script>
+</body>
+</html>
