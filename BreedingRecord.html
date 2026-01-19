@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sow Breeding Records</title>
+
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: #f4f6f8; margin:0; padding:0;}
+.container { max-width: 480px; margin: auto; padding: 15px; }
+.header { display:flex; justify-content:center; align-items:center; padding-bottom:8px; position: sticky; top:0; background:#f4f6f8; z-index:5;}
+.header h2 { margin:0; font-size: 20px; text-align:center; }
+
+/* --- Top Actions above search --- */
+.top-actions { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.top-actions button { flex: 1; padding: 8px 6px; border-radius: 8px; border: none; color: white; cursor: pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:14px; }
+.backup { background: #ff9800; } 
+.restore { background: #9c27b0; } 
+.print { background: #28a745; } 
+.delete-selected { background:#dc3545; }
+
+/* --- Search --- */
+.search-bar input { width: 100%; padding: 10px; font-size: 16px; border-radius: 12px; border: 1px solid #ccc; margin: 4px 0 12px; }
+
+/* --- Records --- */
+.record { margin-bottom: 10px; position: relative; }
+.record.collapsed .notes { display: none; }
+.record-header { background: white; padding: 12px 12px; border-radius: 12px; box-shadow:0 2px 6px rgba(0,0,0,.1); display: flex; flex-direction: column; cursor:pointer; }
+.record-header:hover { box-shadow:0 4px 10px rgba(0,0,0,.15); }
+.record-header-top { display:flex; justify-content: space-between; align-items: center; }
+.record-left { display:flex; align-items:center; gap:10px; }
+.delete-checkbox { display:none; margin-right: 6px; transform: scale(1.3); }
+.actions i { margin-left: 12px; cursor: pointer; color:#555; font-size:16px;}
+.actions i:hover { opacity:.7; }
+
+/* --- Notes --- */
+.notes { margin-top: 8px; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:6px; }
+.note { padding: 6px 6px; border-radius: 10px; min-height: 70px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:flex; flex-direction: column; font-size:12px; }
+.note-header { display:flex; justify-content: space-between; align-items: center; }
+.note textarea { flex: 1; border: none; resize: none; background: transparent; outline: none; font-size:12px; }
+.done-badge { background: #28a745; color: white; font-size:11px; padding:2px 5px; border-radius:6px; margin-right:4px; }
+.progress-container { background:#e0e0e0; border-radius:6px; height:6px; margin-top:5px; }
+.progress-bar { height:6px; border-radius:6px; background:#28a745; width:0%; }
+
+/* --- FAB --- */
+.fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:#007bff; display:flex; justify-content:center; align-items:center; color:white; font-size:24px; box-shadow:0 4px 12px rgba(0,0,0,.3); cursor:pointer; z-index:10; }
+
+/* --- SweetAlert inputs responsive --- */
+.swal2-popup { width: 90% !important; max-width: 400px; }
+.swal-form { display:flex; flex-direction:column; gap:10px; }
+.swal-form input { width: 100%; padding:10px; font-size:16px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h2>Sow Breeding Records</h2>
+</div>
+
+<!-- Top actions moved above search -->
+<div class="top-actions">
+    <button class="print" onclick="window.print()"><i class="fa fa-print"></i> Print</button>
+    <button class="backup" onclick="exportExcel()"><i class="fa fa-cloud-arrow-up"></i> Backup</button>
+    <button class="restore" onclick="importExcel()"><i class="fa fa-cloud-arrow-down"></i> Restore</button>
+    <button id="deleteSelectedBtn" class="delete-selected" onclick="deleteSelected()" style="display:none;"><i class="fa fa-trash"></i> Delete Selected</button>
+</div>
+
+<div class="search-bar">
+    <input id="searchInput" placeholder="Search records..." oninput="render()">
+</div>
+
+<div id="records"></div>
+
+</div>
+
+<!-- Floating Action Button -->
+<div class="fab" onclick="openAddModal()"><i class="fa fa-plus"></i></div>
+
+<script>
+// --------------- Logic ---------------
+const daysList = [21,42,90,100,115];
+const storageKey = "stickyRecords";
+let records = JSON.parse(localStorage.getItem(storageKey)) || [];
+const colors = ["#fff3a0","#ffd6a5","#fdffb6","#caffbf","#9bf6ff","#bdb2ff","#ffc6ff"];
+const save = () => localStorage.setItem(storageKey, JSON.stringify(records));
+const todayMid = () => new Date().setHours(0,0,0,0);
+function isDone(dateStr){ return dateStr && new Date(dateStr).setHours(0,0,0,0) <= todayMid(); }
+function shuffleArray(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+function calcNotes(breedingDate){
+    if(!breedingDate) return [];
+    const base = new Date(breedingDate);
+    const shuffledColors = shuffleArray(colors);
+    return daysList.map((d,i)=>{
+        const nd = new Date(base); nd.setDate(base.getDate()+d);
+        return {day:d,date:nd.toISOString().split("T")[0],text:"",color:shuffledColors[i%shuffledColors.length],done:isDone(nd)};
+    });
+}
+
+// ---------------- Add/Edit Modal ----------------
+async function openAddModal(){
+    const { value } = await Swal.fire({
+        title:"Add Sow Breeding Record",
+        html:`<div class="swal-form">
+                <input id="t" placeholder="Sow Breeding Record Title" value="Sow Breeding Record">
+                <input id="d" type="date" placeholder="Breeding Date">
+              </div>`,
+        showCancelButton:true,
+        preConfirm:()=>({ title:document.getElementById("t").value, breedingDate:document.getElementById("d").value }),
+        didOpen:()=>{ Swal.getHtmlContainer().querySelectorAll('input').forEach(i=>{ i.style.width='100%'; i.style.padding='10px'; i.style.fontSize='16px'; }); }
+    });
+    if(!value || !value.breedingDate) return;
+    records.push({ title:value.title, breedingDate:value.breedingDate, collapsed:false, checked:false, showDelete:false, notes:calcNotes(value.breedingDate) });
+    save(); render();
+}
+
+async function editRecord(i){
+    const r = records[i];
+    const { value } = await Swal.fire({
+        title:"Edit Sow Breeding Record",
+        html:`<div class="swal-form">
+                <input id="t" value="${r.title}">
+                <input id="d" type="date" value="${r.breedingDate||''}">
+              </div>`,
+        showCancelButton:true,
+        preConfirm:()=>({title:document.getElementById("t").value,breedingDate:document.getElementById("d").value}),
+        didOpen:()=>{ Swal.getHtmlContainer().querySelectorAll('input').forEach(i=>{ i.style.width='100%'; i.style.padding='10px'; i.style.fontSize='16px'; }); }
+    });
+    if(!value || !value.breedingDate) return;
+    r.title = value.title; r.breedingDate = value.breedingDate; r.notes = calcNotes(value.breedingDate);
+    save(); render();
+}
+
+// ---------------- Delete / Toggle ----------------
+function toggle(i){ records[i].collapsed=!records[i].collapsed; save(); render(); }
+function markChecked(i,e){ records[i].checked=e.target.checked; save(); updateDeleteButtonVisibility(); }
+function deleteRecord(i){ records.splice(i,1); save(); render(); updateDeleteButtonVisibility(); }
+function deleteSelected(){
+    if(!records.some(r=>r.checked)){ Swal.fire("No records selected","Long-press a record to mark for deletion.","info"); return;}
+    Swal.fire({title:"Delete selected records?",icon:"warning",showCancelButton:true,confirmButtonText:"Delete"})
+    .then(r=>{if(r.isConfirmed){records = records.filter(r=>!r.checked); save(); render(); updateDeleteButtonVisibility();}});
+}
+
+// ---------------- Show/hide Delete Selected ----------------
+function updateDeleteButtonVisibility(){
+    const btn = document.getElementById("deleteSelectedBtn");
+    const anyShown = records.some(r=>r.showDelete);
+    btn.style.display = anyShown ? 'flex' : 'none';
+}
+
+// ---------------- Render ----------------
+function render(){
+    const q = document.getElementById("searchInput").value.toLowerCase();
+    const c = document.getElementById("records");
+    c.innerHTML="";
+    if(records.length===0){ c.innerHTML='<p style="text-align:center;color:#777;">No records yet. Click + to add a Sow Breeding Record.</p>'; return; }
+
+    records.forEach((r,i)=>{
+        if(!r.title.toLowerCase().includes(q)) return;
+
+        const rec = document.createElement("div");
+        rec.className = "record"+(r.collapsed?" collapsed":"");
+        rec.innerHTML = `
+        <div class="record-header">
+            <div class="record-header-top">
+                <div class="record-left">
+                    <input class="delete-checkbox" type="checkbox">
+                    <div>
+                        <strong>${r.title}</strong><br>
+                        <small>Breeding Date: ${r.breedingDate?new Date(r.breedingDate).toDateString():'N/A'}</small>
+                    </div>
+                </div>
+                <div class="actions">
+                    <i class="fa fa-pen" onclick="editRecord(${i})"></i>
+                    <i class="fa fa-trash" onclick="deleteRecord(${i})"></i>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+        <div class="notes"></div>`;
+
+        const header = rec.querySelector(".record-header-top");
+        const checkbox = rec.querySelector(".delete-checkbox");
+        checkbox.checked = r.checked;
+        checkbox.style.display = r.showDelete?'inline-block':'none';
+        checkbox.onchange = e=>markChecked(i,e);
+
+        // Long press to toggle delete checkbox
+        let pressTimer;
+        header.addEventListener('mousedown', e => { pressTimer = setTimeout(()=>{ r.showDelete = !r.showDelete; if(!r.showDelete) r.checked=false; updateDeleteButtonVisibility(); render(); },600); });
+        header.addEventListener('touchstart', e => { pressTimer = setTimeout(()=>{ r.showDelete = !r.showDelete; if(!r.showDelete) r.checked=false; updateDeleteButtonVisibility(); render(); },600); });
+        header.addEventListener('mouseup', e => clearTimeout(pressTimer));
+        header.addEventListener('mouseleave', e => clearTimeout(pressTimer));
+        header.addEventListener('touchend', e => clearTimeout(pressTimer));
+
+        // Toggle collapse
+        header.onclick = e=>{
+            if(e.target.tagName!=="INPUT" && !e.target.classList.contains("fa-pen") && !e.target.classList.contains("fa-trash"))
+                toggle(i);
+        };
+
+        const notesDiv = rec.querySelector(".notes");
+        const doneCount = r.notes.filter(n=>n.done).length;
+        rec.querySelector(".progress-bar").style.width = Math.round(doneCount / r.notes.length * 100) + "%";
+
+        r.notes.forEach(n=>{
+            n.done=isDone(n.date);
+            const note = document.createElement("div");
+            note.className="note"; note.style.background=n.color;
+            note.innerHTML=`
+            <div class="note-header">
+                <strong>${n.day}th Day</strong>
+                <div>
+                    ${n.done?`<span class="done-badge">DONE</span>`:``}
+                    <input type="checkbox" ${n.done?"checked":""}>
+                </div>
+            </div>
+            <small>${n.date?new Date(n.date).toDateString():'N/A'}</small>
+            <textarea placeholder="Notes...">${n.text}</textarea>`;
+
+            note.querySelector("textarea").oninput = e=>{ n.text=e.target.value; save(); }
+            note.querySelector("input[type=checkbox]").onchange = e=>{ n.done=e.target.checked; save(); render(); }
+
+            notesDiv.appendChild(note);
+        });
+
+        c.appendChild(rec);
+    });
+
+    updateDeleteButtonVisibility();
+}
+
+// ---------------- Excel Backup/Restore ----------------
+function exportExcel(){
+    if(records.length===0){ Swal.fire("No records to backup"); return; }
+    const wb = XLSX.utils.book_new();
+    const data = records.map(r=>{
+        const row = {Title:r.title,BreedingDate:r.breedingDate};
+        r.notes.forEach(n=>{
+            row[`${n.day}th Day Date`] = n.date ? new Date(n.date).toDateString() : '';
+            row[`${n.day}th Day Notes`] = n.text;
+            row[`${n.day}th Day DONE`] = n.done ? 1 : 0;
+        });
+        return row;
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "Records");
+    XLSX.writeFile(wb,"SowBreedingRecords_Backup.xlsx");
+}
+
+function importExcel(){
+    const input = document.createElement("input");
+    input.type="file"; input.accept=".xlsx,.xls";
+    input.onchange = e=>{
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = evt=>{
+            const data = new Uint8Array(evt.target.result);
+            const wb = XLSX.read(data,{type:'array'});
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(ws,{defval:""});
+            Swal.fire({
+                title: 'Restore Records',
+                text: 'Do you want to merge with existing records or replace them?',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Replace',
+                denyButtonText: 'Merge',
+            }).then(result=>{
+                if(result.isConfirmed) records = [];
+                json.forEach(r=>{
+                    if(!r.Title || !r.BreedingDate) return;
+                    const newNotes = daysList.map(d=>{
+                        const dateKey = `${d}th Day Date`;
+                        const textKey = `${d}th Day Notes`;
+                        const doneKey = `${d}th Day DONE`;
+                        return {
+                            day:d,
+                            date:r[dateKey] ? new Date(r[dateKey]).toISOString().split("T")[0] : new Date(r.BreedingDate).setDate(new Date(r.BreedingDate).getDate()+d),
+                            text:r[textKey]||"",
+                            color:shuffleArray(colors)[0],
+                            done: r[doneKey] == 1
+                        };
+                    });
+                    records.push({title:r.Title,breedingDate:r.BreedingDate,collapsed:false,checked:false,showDelete:false,notes:newNotes});
+                });
+                save(); render();
+                Swal.fire("Restore complete","","success");
+            });
+        }
+        reader.readAsArrayBuffer(file);
+    };
+    input.click();
+}
+
+render();
+</script>
+</body>
+</html>
