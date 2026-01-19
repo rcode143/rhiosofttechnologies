@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sow Farrowing Record</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+:root{--primary:#1976d2;--bg:#f2f4f7}
+body{margin:0;font-family:system-ui,-apple-system;background:var(--bg);padding-bottom:90px}
+.container{max-width:520px;margin:auto;padding:14px}
+h2{text-align:center}
+.search-bar{width:100%;padding:10px;border-radius:10px;border:1px solid #ccc;margin-bottom:12px}
+
+/* Sow card */
+.sow-card{background:#fff;border-radius:16px;margin-bottom:14px;box-shadow:0 4px 10px rgba(0,0,0,.08);overflow:hidden}
+.sow-header{
+  background:var(--primary);color:#fff;
+  padding:8px 12px;
+  display:flex;justify-content:space-between;align-items:flex-start;
+  cursor:pointer;
+  position:relative;
+  font-size:14px;
+  line-height:1.3;
+  border-radius:16px 16px 0 0;
+}
+.sow-left b{font-size:16px;margin-bottom:2px;display:block}
+.sow-left .details{font-size:13px;line-height:1.2}
+.sow-right{align-self:flex-start;display:flex;gap:8px;opacity:0;transition:.2s} 
+.sow-right.show{opacity:1}
+.sow-right button{background:none;border:none;color:#fff;font-size:16px;cursor:pointer}
+
+/* Body */
+.sow-body{display:none;padding:12px}
+
+/* Record */
+.record{background:#fff;border-radius:12px;padding:10px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.record-title{font-weight:bold;margin-bottom:6px;font-size:14px}
+.record-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px}
+
+/* Notes */
+.notes-header{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-weight:bold;font-size:14px}
+.notes-header i{margin-right:6px}
+.notes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px;position:relative}
+.note{padding:20px 10px 10px;border-radius:12px;font-size:12px;line-height:1.35;position:relative;box-shadow:0 3px 6px rgba(0,0,0,.15);word-break:break-word}
+.note-actions{position:absolute;top:5px;right:5px;display:flex;gap:6px;background:none;opacity:0;transition:.2s}
+.note-actions.show{opacity:1}
+.note-actions button{border:none;background:none;font-size:14px;cursor:pointer;color:#444}
+
+/* Add Note button */
+.add-note-btn{padding:6px 10px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px}
+
+/* FAB */
+.fab{position:fixed;right:20px;bottom:20px;width:60px;height:60px;border-radius:50%;border:none;background:var(--primary);color:#fff;font-size:26px;box-shadow:0 6px 15px rgba(0,0,0,.3);z-index:1000}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:1000}
+.overlay.active{display:block;}
+.modal{position:fixed;left:0;right:0;bottom:-100%;background:#fff;border-radius:22px 22px 0 0;padding:20px;transition:.3s;z-index:1010}
+.modal.active{bottom:0}
+.modal h3{margin-top:0;font-size:18px;font-weight:bold}
+input,textarea{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ccc}
+.primary{width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>🐖 Sow Farrowing Record</h2>
+<input type="text" id="searchInput" class="search-bar" placeholder="Search by Sow Name / Tag..." oninput="render()">
+<div id="sowList"></div>
+</div>
+
+<button class="fab" onclick="openAddModal()"><i class="fa-solid fa-plus"></i></button>
+
+<div class="overlay" id="overlay" onclick="closeModal()"></div>
+
+<!-- RECORD MODAL -->
+<div class="modal" id="recordModal">
+<h3>Sow Farrowing Record</h3>
+<input id="sowName" placeholder="Sow Name / Tag">
+<input id="bornDate" type="date">
+<input id="parity" type="number" placeholder="Parity">
+<input id="alive" type="number" placeholder="Born Alive">
+<input id="still" type="number" placeholder="Stillbirth">
+<input id="wean" type="number" placeholder="Wean">
+<input id="deaths" type="number" placeholder="Deaths">
+<button class="primary" onclick="saveRecord()">Save</button>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="modal" id="noteModal">
+<h3>Note</h3>
+<input id="noteDate" type="date">
+<textarea id="noteText" placeholder="Medicine / Injection"></textarea>
+<button class="primary" onclick="saveNote()">Save</button>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("sowData")) || {};
+
+const colors=[
+ {bg:"#FFF4B8",text:"#5a4a00"},
+ {bg:"#DFF6E3",text:"#1f5c3a"},
+ {bg:"#E8F0FF",text:"#243b6b"},
+ {bg:"#FFE6EC",text:"#7a243b"},
+ {bg:"#F1E8FF",text:"#4a2c7a"}
+];
+
+let editRec=null, editNote=null, currentSow=null, editSow=null, editPigletNote=false;
+
+const overlay=document.getElementById("overlay");
+const recordModal=document.getElementById("recordModal");
+const noteModal=document.getElementById("noteModal");
+const searchInput=document.getElementById("searchInput");
+
+function formatDate(d){
+ return d?new Date(d).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"}):"-";
+}
+
+function toggle(id){
+ const el=document.getElementById(id);
+ el.style.display=el.style.display==="block"?"none":"block";
+}
+
+/* Add / Edit Record */
+function openAddModal(){
+ editRec=null; editSow=null;
+ sowName.value=""; sowName.disabled=false;
+ bornDate.value=""; parity.value=""; alive.value=""; still.value=""; wean.value=""; deaths.value="";
+ overlay.classList.add("active"); recordModal.classList.add("active");
+}
+
+function editRecordMain(sow){
+  editSow = sow; 
+  const latest = data[sow].records.at(-1) || {};
+
+  sowName.value = sow;
+  sowName.disabled = true;
+
+  bornDate.value = latest.bornDate || "";
+  parity.value = latest.parity || "";
+  alive.value = latest.alive || "";
+  still.value = latest.still || "";
+  wean.value = latest.wean || "";
+  deaths.value = latest.deaths || "";
+
+  editRec = data[sow].records.length - 1;
+  overlay.classList.add("active");
+  recordModal.classList.add("active");
+}
+
+/* Note Modal */
+function openNoteModal(s, isPiglet=false){
+ editNote=null; currentSow=s; editPigletNote=isPiglet;
+ noteDate.value=""; noteText.value="";
+ overlay.classList.add("active"); noteModal.classList.add("active");
+}
+
+function editNoteModal(s,i,isPiglet=false){
+ editNote=i; currentSow=s; editPigletNote=isPiglet;
+ const n = isPiglet ? (data[s].pigletNotes[i] || {}) : (data[s].notes[i] || {});
+ noteDate.value = n.date || "";
+ noteText.value = n.text || "";
+ overlay.classList.add("active"); noteModal.classList.add("active");
+}
+
+function closeModal(){
+ overlay.classList.remove("active");
+ document.querySelectorAll(".modal").forEach(m=>m.classList.remove("active"));
+ editRec=editNote=null; sowName.disabled=false;
+}
+
+/* Default Piglet Notes */
+function addDefaultPigletNotes(sow){
+    const record = data[sow].records.at(-1);
+    if(!record || !record.bornDate) return;
+    const baseDate = new Date(record.bornDate);
+    const addDays = (date, days) => { const d=new Date(date); d.setDate(d.getDate()+days); return d.toISOString().split('T')[0]; }
+    const defaultNotes = [
+        {date: addDays(baseDate,3), text:"Piglet Iron 1st dose"},
+        {date: addDays(baseDate,5), text:"Introduction to booster feeds"},
+        {date: addDays(baseDate,10), text:"B-Complex 1st dose"},
+        {date: addDays(baseDate,14), text:"Piglet Iron 2nd dose"},
+        {date: addDays(baseDate,25), text:"B-Complex 2nd dose"},
+    ];
+    data[sow].pigletNotes = defaultNotes.map(n=>{ const c=colors[Math.floor(Math.random()*colors.length)]; return {date:n.date,text:n.text,bg:c.bg,color:c.text}; });
+}
+
+function initializePigletProgramForExistingSows(){
+    Object.keys(data).forEach(sow => {
+        if(!data[sow].pigletNotes || data[sow].pigletNotes.length===0){
+            addDefaultPigletNotes(sow);
+        }
+    });
+    localStorage.setItem("sowData", JSON.stringify(data));
+}
+
+/* Save Record */
+function saveRecord(){
+  if(!sowName.value) return Swal.fire("Required","Sow name needed","warning");
+  data[sowName.value] = data[sowName.value] || {records:[], notes:[], pigletNotes:[]};
+  const r = {
+    bornDate:bornDate.value,
+    parity:parity.value,
+    alive:alive.value,
+    still:still.value,
+    wean:wean.value,
+    deaths:deaths.value
+  };
+  if(editRec!=null) data[sowName.value].records[editRec]=r;
+  else { data[sowName.value].records.push(r); addDefaultPigletNotes(sowName.value); }
+  localStorage.setItem("sowData",JSON.stringify(data));
+  closeModal(); render();
+}
+
+/* Save Note */
+function saveNote(){
+ if(!noteText.value) return Swal.fire("Required","Note needed","warning");
+ const c=colors[Math.floor(Math.random()*colors.length)];
+ const n={date:noteDate.value,text:noteText.value,bg:c.bg,color:c.text};
+ if(editPigletNote){ data[currentSow].pigletNotes=data[currentSow].pigletNotes||[]; editNote!=null?data[currentSow].pigletNotes[editNote]=n:data[currentSow].pigletNotes.push(n); }
+ else { data[currentSow].notes=data[currentSow].notes||[]; editNote!=null?data[currentSow].notes[editNote]=n:data[currentSow].notes.push(n); }
+ localStorage.setItem("sowData",JSON.stringify(data));
+ closeModal(); render();
+}
+
+/* Long Press & Tap for notes */
+function attachNoteLongPress(noteDiv){
+  let pressTimer;
+  noteDiv.addEventListener("touchstart", e=>{ pressTimer=setTimeout(()=>{ noteDiv.querySelector(".note-actions").classList.add("show"); },600); });
+  noteDiv.addEventListener("touchend", e=>{ clearTimeout(pressTimer); });
+  noteDiv.addEventListener("mousedown", e=>{ pressTimer=setTimeout(()=>{ noteDiv.querySelector(".note-actions").classList.add("show"); },600); });
+  noteDiv.addEventListener("mouseup", e=>{ clearTimeout(pressTimer); });
+  noteDiv.addEventListener("click", e=>{ let actions=noteDiv.querySelector(".note-actions"); if(actions.classList.contains("show")) actions.classList.remove("show"); });
+}
+
+/* Header long press to show icons visually */
+function attachHeaderLongPress(header){
+  let pressTimer;
+  const rightDiv=header.querySelector('.sow-right');
+  header.addEventListener("touchstart", e=>{ pressTimer=setTimeout(()=>{ rightDiv.classList.add("show"); },600); });
+  header.addEventListener("touchend", e=>{ clearTimeout(pressTimer); });
+  header.addEventListener("mousedown", e=>{ pressTimer=setTimeout(()=>{ rightDiv.classList.add("show"); },600); });
+  header.addEventListener("mouseup", e=>{ clearTimeout(pressTimer); });
+  header.addEventListener("click", e=>{ if(rightDiv.classList.contains("show")) rightDiv.classList.remove("show"); });
+}
+
+/* Render Sow Records */
+function render(){
+ const filter=searchInput.value.toLowerCase();
+ sowList.innerHTML="";
+ Object.keys(data).filter(s=>s.toLowerCase().includes(filter)).forEach(s=>{
+  const latest=data[s].records.at(-1)||{};
+  const id="s"+s.replace(/\W/g,"");
+  sowList.innerHTML+=`
+  <div class="sow-card">
+    <div class="sow-header">
+      <div class="sow-left" onclick="toggle('${id}')">
+        <b>${s}</b>
+        <div class="details">Date Farrowed: ${formatDate(latest.bornDate)} | Parity: ${latest.parity||"-"} | Alive: ${latest.alive||"-"} | Still: ${latest.still||"-"} | Wean: ${latest.wean||"-"} | Deaths: ${latest.deaths||"-"}</div>
+      </div>
+      <div class="sow-right">
+        <button class="edit-btn"><i class="fa-solid fa-pen"></i></button>
+        <button class="delete-btn"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+    <div class="sow-body" id="${id}">
+      <div class="record-title">Details</div>
+      ${data[s].records.map((r,i)=>`<div class="record">
+        <div class="record-row">
+          <div><b>Date:</b> ${formatDate(r.bornDate)}</div>
+          <div><b>Parity:</b> ${r.parity}</div>
+          <div><b>Alive:</b> ${r.alive}</div>
+          <div><b>Still:</b> ${r.still}</div>
+          <div><b>Wean:</b> ${r.wean}</div>
+          <div><b>Deaths:</b> ${r.deaths}</div>
+        </div>
+      </div>`).join("")}
+
+      <div class="notes-header">
+        <div><i class="fa-solid fa-syringe"></i> Medical Records</div>
+        <button class="add-note-btn" onclick="openNoteModal('${s}')"><i class="fa-solid fa-plus"></i> Add Note</button>
+      </div>
+      <div class="notes-grid">
+        ${(data[s].notes||[]).map((n,i)=>`<div class="note" style="background:${n.bg};color:${n.color}">
+          <div class="note-actions">
+            <button onclick="editNoteModal('${s}',${i})"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="data['${s}'].notes.splice(${i},1);localStorage.setItem('sowData',JSON.stringify(data));render()">
+            <i class="fa-solid fa-trash"></i></button>
+          </div>
+          <b>${formatDate(n.date)}</b><br>${n.text}
+        </div>`).join("")}
+      </div>
+
+      <div class="notes-header">
+        <div><i class="fa-solid fa-baby"></i> Piglet Program / Injectibles</div>
+        <button class="add-note-btn" onclick="openNoteModal('${s}', true)"><i class="fa-solid fa-plus"></i> Add Note</button>
+      </div>
+      <div class="notes-grid">
+        ${(data[s].pigletNotes||[]).map((n,i)=>`<div class="note" style="background:${n.bg};color:${n.color}">
+          <div class="note-actions">
+            <button onclick="editNoteModal('${s}', ${i}, true)"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="data['${s}'].pigletNotes.splice(${i},1);localStorage.setItem('sowData',JSON.stringify(data));render()">
+            <i class="fa-solid fa-trash"></i></button>
+          </div>
+          <b>${formatDate(n.date)}</b><br>${n.text}
+        </div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+ });
+
+ // Attach long press for notes
+ document.querySelectorAll('.note').forEach(noteDiv=>attachNoteLongPress(noteDiv));
+
+ // Attach edit/delete and long press for headers
+ document.querySelectorAll('.sow-card').forEach(card=>{
+   const header=card.querySelector('.sow-header');
+   const sowNameText=card.querySelector('.sow-left b').innerText;
+
+   header.querySelector('.edit-btn').onclick=()=>editRecordMain(sowNameText);
+   header.querySelector('.delete-btn').onclick=()=>{
+     Swal.fire({
+       title:"Delete Sow?",
+       text:"All records and notes will be removed.",
+       icon:"warning",
+       showCancelButton:true,
+       confirmButtonColor:"#d32f2f"
+     }).then(result=>{
+       if(result.isConfirmed){
+         delete data[sowNameText];
+         localStorage.setItem("sowData",JSON.stringify(data));
+         render();
+         Swal.fire("Deleted","Sow removed","success");
+       }
+     });
+   }
+
+   attachHeaderLongPress(header);
+ });
+}
+
+initializePigletProgramForExistingSows();
+render();
+</script>
+
+</body>
+</html>
